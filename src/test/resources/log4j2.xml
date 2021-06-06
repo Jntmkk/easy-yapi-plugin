@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Configuration name="baseConf" status="warn" monitorInterval="30">
+
+    <Appenders>
+
+        <Console name="Console" target="SYSTEM_OUT">
+            <!-- 格式化日志 -->
+            <PatternLayout pattern="%d{HH:mm:ss.SSS} [%t] %-5level %logger{36} - %msg%n" charset="UTF-8"/>
+        </Console>
+
+    </Appenders>
+
+    <Loggers>
+
+        <!-- level默认为error -->
+        <Root level="info">
+            <!-- 这里引用了Appenders标签中的name值 -->
+            <AppenderRef ref="Console"/>
+        </Root>
+
+    </Loggers>
+
+</Configuration>

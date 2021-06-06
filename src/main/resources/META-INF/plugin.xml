@@ -1,0 +1,30 @@
+<idea-plugin>
+    <id>cn.hellobike.hippo.easy-yapi-plugin</id>
+    <name>easy-yapi</name>
+    <vendor email="bbmike253@yourcompany.com" url="https://whh.pw">Hello Bike</vendor>
+
+    <description>upload interface definition and params to service</description>
+
+    <!-- please see https://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
+         on how to target different products -->
+    <depends>com.intellij.modules.platform</depends>
+    <depends>com.intellij.modules.lang</depends>
+    <depends>com.intellij.modules.java</depends>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Add your extensions here -->
+<!--        <applicationService serviceImplementation="cn.hellobike.hippo.config.YaPiConfigService"/>-->
+        <applicationService serviceImplementation="cn.hellobike.hippo.config.YaPiConfig"/>
+    </extensions>
+    <application-components>
+<!--        <component>-->
+<!--            <implementation-class>cn.hellobike.hippo.config.YaPiConfigService</implementation-class>-->
+<!--        </component>-->
+    </application-components>
+    <actions>
+        <action id="cn.hellobike.hippo" class="cn.hellobike.hippo.actions.UploadToYaPi" text="UploadToYaPi"
+                description="UploadToYaPi">
+            <add-to-group group-id="EditorLangPopupMenu" anchor="first"/>
+        </action>
+    </actions>
+</idea-plugin>

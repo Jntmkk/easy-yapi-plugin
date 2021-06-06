@@ -1,0 +1,64 @@
+plugins {
+    id 'java'
+    id 'org.jetbrains.intellij' version '0.7.3'
+    id "org.jetbrains.kotlin.jvm" version "1.3.41"
+}
+
+group 'cn.hellobike.hippo'
+version '1.0-SNAPSHOT'
+
+apply plugin: 'java'
+sourceCompatibility = 11
+targetCompatibility = 11
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    compileOnly 'org.projectlombok:lombok:1.18.8'
+    annotationProcessor 'org.projectlombok:lombok:1.18.8'
+    compile group: 'commons-io', name: 'commons-io', version: '2.5'
+    testCompile("io.kotlintest:kotlintest-runner-junit5:3.3.2")
+    testCompile "io.mockk:mockk:1.9.3"
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.6.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine'
+//    compile(group: "com.github.java-json-tools", name: "json-schema-validator", version: "2.2.14");
+    implementation(group: 'com.github.victools', name: 'jsonschema-generator', version: '4.18.0') {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+//    https://mvnrepository.com/artifact/io.swagger/swagger-annotations
+    implementation group: 'io.swagger', name: 'swagger-annotations', version: '1.5.24'
+    compile(group: 'cn.hellobike.hippo', name: 'easy-yapi-core', version: '1.0-SNAPSHOT') {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+    compile(group: 'cn.hellobike.hippo', name: 'easy-yapi-annotation', version: '1.0-SNAPSHOT') {
+        exclude group: 'org.slf4j', module: 'slf4j-api'
+    }
+    compile 'com.alibaba:fastjson:1.2.73'
+    compile 'cn.hutool:hutool-all:5.6.5'
+
+
+    // https://mvnrepository.com/artifact/org.ow2.asm/asm
+//    implementation group: 'org.ow2.asm', name: 'asm', version: '9.1'
+
+// https://mvnrepository.com/artifact/com.github.victools/jsonschema-module-swagger-1.5
+//    compile(group: 'com.github.victools', name: 'jsonschema-module-swagger-1.5', version: '4.16.0') {
+//        exclude group: 'org.slf4j', module: 'slf4j-api'
+//    }
+}
+
+// See https://github.com/JetBrains/gradle-intellij-plugin/
+intellij {
+    version '2020.3.1'
+    plugins = ["org.intellij.scala:2020.3.1", 'java']
+}
+patchPluginXml {
+    changeNotes """
+      Add change notes here.<br>
+      <em>most HTML tags may be used</em>"""
+}
+test {
+    useJUnitPlatform()
+}
