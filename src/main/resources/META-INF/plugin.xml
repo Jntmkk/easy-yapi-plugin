@@ -13,14 +13,17 @@
 
     <extensions defaultExtensionNs="com.intellij">
         <!-- Add your extensions here -->
-<!--        <applicationService serviceImplementation="cn.hellobike.hippo.config.YaPiConfigService"/>-->
-        <applicationService serviceImplementation="cn.hellobike.hippo.config.YaPiConfig"/>
+        <!--        <applicationService serviceImplementation="cn.hellobike.hippo.config.YaPiConfigService"/>-->
+        <!--        <applicationService serviceImplementation="cn.hellobike.hippo.config.YaPiConfig"/>-->
     </extensions>
     <application-components>
-<!--        <component>-->
-<!--            <implementation-class>cn.hellobike.hippo.config.YaPiConfigService</implementation-class>-->
-<!--        </component>-->
+
     </application-components>
+    <project-components>
+        <component>
+            <implementation-class>cn.hellobike.hippo.config.YaPiConfig</implementation-class>
+        </component>
+    </project-components>
     <actions>
         <action id="cn.hellobike.hippo" class="cn.hellobike.hippo.actions.UploadToYaPi" text="UploadToYaPi"
                 description="UploadToYaPi">
