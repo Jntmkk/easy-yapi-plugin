@@ -19,7 +19,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Data
-public class ActionContext extends VelocityContext implements BaseContext {
+public class ActionContext implements BaseContext {
     public static final String API_ANNOTATION = "cn.hellobike.hippo.annotation.YaPiApi";
     private AnActionEvent action;
     private YaPiService yaPiService;
@@ -30,15 +30,8 @@ public class ActionContext extends VelocityContext implements BaseContext {
         this.action = action;
         this.yaPiService = service;
         this.yaPiConfig = yaPiConfig;
-        init();
     }
 
-    public void init() {
-        put("psiClass", getPsiClass());
-        put("psiMethod", getCurrentMethod());
-        put("psiAnnotation", getCurrentMethod().getAnnotation(API_ANNOTATION));
-
-    }
 
     public Project getProject() {
         return action.getProject();

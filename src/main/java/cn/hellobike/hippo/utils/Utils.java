@@ -2,21 +2,13 @@ package cn.hellobike.hippo.utils;
 
 import cn.hellobike.hippo.actions.UploadToYaPi;
 import cn.hellobike.hippo.annotation.YaPiApiEntity;
-import cn.hellobike.hippo.annotation.YaPiApiEntity;
 import cn.hellobike.hippo.classloader.ReloadableClassLoader;
-import cn.hellobike.hippo.classloader.SourceFileClassLoader;
 import cn.hellobike.hippo.config.YaPiConfig;
-import cn.hellobike.hippo.exception.YaPiException;
 import cn.hellobike.hippo.json.ActionContext;
-import cn.hellobike.hippo.yapi.entity.CategoryEntity;
-import cn.hellobike.hippo.yapi.request.AddInterfaceRequest;
-import cn.hellobike.hippo.yapi.response.GetInterfaceByIdResponse;
-import cn.hellobike.hippo.yapi.service.YaPiService;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.http.HttpResponse;
 import com.alibaba.fastjson.JSONObject;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.github.victools.jsonschema.generator.*;
 import com.intellij.codeInsight.hint.HintManager;
 import com.intellij.notification.*;
@@ -343,26 +335,12 @@ public class Utils {
         return target.substring(left, right + 1);
     }
 
-    public static GetInterfaceByIdResponse getOrCreateInterface(YaPiApiEntity annotationEntity, YaPiConfig config, YaPiService yaPiService) throws YaPiException {
-        AddInterfaceRequest addInterfaceRequest = new AddInterfaceRequest();
-        BeanUtil.copyProperties(annotationEntity, addInterfaceRequest, CopyOptions.create().ignoreCase().ignoreNullValue());
-        addInterfaceRequest.setProject_id(config.getProjectId());
-        if (addInterfaceRequest.getCatid() == null && annotationEntity.getCatText() != null) {
-            CategoryEntity categoryByTitle = yaPiService.getCategoryByTitle(config.getProjectId(), annotationEntity.getCatText());
-            if (categoryByTitle != null) {
-                addInterfaceRequest.setCatid(String.valueOf(categoryByTitle.get_id()));
-            }
-        }
-        GetInterfaceByIdResponse interfaceOrCreate = yaPiService.getInterfaceOrCreate(addInterfaceRequest);
-        return interfaceOrCreate;
-    }
-
     public static String getDefaultPath(ActionContext actionContext) {
         YaPiConfig config = actionContext.getYaPiConfig();
         PsiClass psiClass = actionContext.getPsiClass();
         PsiJavaFile psiJavaFile = actionContext.getPsiJavaFile();
         PsiMethod currentMethod = actionContext.getCurrentMethod();
-        return getRelativePath(config.getPathPrefix(), lastSubString(psiJavaFile.getPackageName(), '.'), currentMethod.getName());
+        return getRelativePath(config.getPathPrefix(), lastSubString(psiJavaFile.getPackageName(), '.'), psiClass.getName(), currentMethod.getName());
     }
 
     public static String getDefaultTitle(ActionContext actionContext) {
