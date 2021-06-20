@@ -1,25 +1,17 @@
 package cn.hellobike.hippo.actions;
 
-import cn.hellobike.hippo.annotation.YaPiAnnotationEntity;
 import cn.hellobike.hippo.config.YaPiConfig;
+import cn.hellobike.hippo.json.ActionContext;
 import cn.hellobike.hippo.utils.Utils;
-import cn.hellobike.hippo.yapi.entity.CategoryEntity;
-import cn.hellobike.hippo.yapi.request.UpdateInterfaceRequest;
-import cn.hellobike.hippo.yapi.response.GetInterfaceByIdResponse;
-import cn.hellobike.hippo.yapi.response.UpdateInterfaceResponse;
+import cn.hellobike.hippo.yapi.request.UpdateOrCreateRequest;
 import cn.hellobike.hippo.yapi.service.YaPiService;
 import cn.hellobike.hippo.yapi.service.YaPiServiceImpl;
-import com.intellij.codeInsight.hint.HintManager;
+import com.intellij.notification.NotificationType;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
-import com.intellij.openapi.actionSystem.CommonDataKeys;
 import com.intellij.openapi.diagnostic.Logger;
-import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
-import com.intellij.psi.*;
 import lombok.SneakyThrows;
-
-import java.io.IOException;
 
 public class UploadToYaPi extends AnAction {
     public static Logger log = Logger.getInstance(UploadToYaPi.class);
@@ -34,109 +26,43 @@ public class UploadToYaPi extends AnAction {
         if (yaPiConfig == null) {
             return;
         }
-        // TODO: insert action logic here
-        ClassLoader parent = getClass().getClassLoader();
-        Project project = e.getProject();
-        if (parent == null) {
-            return;
-        }
-        Editor editor = e.getDataContext().getData(CommonDataKeys.EDITOR);
-        PsiFile psiFile = e.getDataContext().getData(CommonDataKeys.PSI_FILE);
-        PsiClass psiClass = Utils.getPsiClass(editor, psiFile);
-        if (psiFile == null || psiClass == null) {
-            Utils.showErrorHint(editor, "只针对 Java 源码使用！");
-            return;
-        }
-        log.info(psiClass + "-----" + psiFile.toString());
-        PsiMethod psiMethod = Utils.getCurrentLineMethod(editor, psiFile);
-        if (psiMethod == null) {
-            HintManager.getInstance().showInformationHint(editor, "当前行未检测到方法");
-            return;
-        }
-
         YaPiService service = new YaPiServiceImpl(yaPiConfig.getUrl(), yaPiConfig.getToken());
-        // 先判断根据 path 判断是否已存在接口，不存在则创建，否则更新
+        ActionContext actionContext = new ActionContext(e, service, yaPiConfig);
 
-        // 先获取注解信息
-        YaPiAnnotationEntity annotationEntity = getAnnotationEntity(psiClass, editor, psiMethod);
-        if (annotationEntity == null) {
-            Utils.showErrorHint(editor, "获取注解失败!");
+
+        try {
+            UpdateOrCreateRequest request = new UpdateOrCreateRequest();
+
+//        } catch (EditorInfoException editorInfoException) {
+//            Utils.showErrorHint(actionContext.getEditor(), editorInfoException.getMessage());
+//            log.info(editorInfoException);
+//            return;
+//        } catch (ClassNotFoundException notFoundException) {
+//            String s = notFoundException.getMessage().replaceAll("/", ".");
+//            Utils.notify(String.format("未发现class文件%s编译一下？", s), NotificationType.INFORMATION);
+//            return;
+//        } catch (HttpRequestException requestException) {
+//            log.info(requestException);
+//            Utils.notify(String.format("出错啦--%s", requestException.getMessage()), NotificationType.ERROR);
+//            return;
+        } catch (Exception exception) {
+            log.error(exception);
+            Utils.notify("出错了，告诉我日志吧", NotificationType.ERROR);
             return;
         }
-        // 先获得接口基本信息，根据 path 唯一性判断，若未指定
-        GetInterfaceByIdResponse interfaceByIdResponse = Utils.getOrCreateInterface(annotationEntity, yaPiConfig, service);
-
-        if (interfaceByIdResponse.getErrcode() != 0) {
-            Utils.notify(interfaceByIdResponse.getErrmsg());
-            return;
-        }
-        UpdateInterfaceRequest updateRequest = cn.hellobike.hippo.yapi.Utils.mapGetResponseToUpdateRequest(interfaceByIdResponse.getData());
-        updateRequest.setReq_body_is_json_schema(true);
-        updateRequest.setRes_body_is_json_schema(true);
-        applyMethodReqAndResBody(project, editor, psiFile, psiClass, psiMethod, updateRequest);
-
-        UpdateInterfaceResponse updateInterfaceResponse = service.updateInterface(updateRequest);
-        if (updateInterfaceResponse.getErrcode() == 0) {
-            Utils.notify("更新成功");
-        } else {
-            Utils.notify(updateInterfaceResponse.getErrmsg());
-        }
-
-    }
-
-
-    public YaPiAnnotationEntity getAnnotationEntity(PsiClass psiClass, Editor editor, PsiMethod psiMethod) {
-        PsiAnnotation[] annotations = psiMethod.getAnnotations();
-        PsiAnnotation psiAnnotation = Utils.hasTargetAnnotation(annotations, TARGET_ANNOTATION);
-        if (psiAnnotation == null) {
-            Utils.showErrorHint(editor, "未使用 @YaPiApi 注解？");
-            return null;
-        }
-        return Utils.getDefaultAnnotationEntity(psiClass, psiMethod);
-    }
-
-
-    private String getCatIdByTitleOrDefault(YaPiService yaPiService, YaPiConfig yaPiConfig, String title) {
-        if (title == null) {
-            title = "公共分类";
-        }
-        CategoryEntity categoryByTitle = yaPiService.getCategoryByTitle(yaPiConfig.getProjectId(), title);
-        return String.valueOf(categoryByTitle.get_id());
+        Utils.notify("保存成功", NotificationType.INFORMATION);
     }
 
     private YaPiConfig checkConfig(Project project) {
-//		YaPiConfigService service = YaPiConfigService.getConfigService();
-//		if (service == null) {
-//			Utils.notify("获取config service 失败");
-//			return null;
-//		}
-//        YaPiConfig config = YaPiConfig.getConfig();
         YaPiConfig config = project.getComponent(YaPiConfig.class);
         if (config == null) {
-            Utils.notify("获取config失败");
+            Utils.notify("获取config失败", NotificationType.INFORMATION);
             return null;
         }
         if (config.getUrl() == null || config.getProjectId() == null || config.getToken() == null) {
-            Utils.notify("请先配置 token、projectID、URL");
+            Utils.notify("请先配置 token、projectID、URL", NotificationType.INFORMATION);
             return null;
         }
         return config;
-    }
-
-    private boolean applyMethodReqAndResBody(Project project, Editor editor, PsiFile psiFile, PsiClass psiClass, PsiMethod psiMethod, UpdateInterfaceRequest request) throws ClassNotFoundException, IOException {
-        PsiParameter[] parameters = psiMethod.getParameterList().getParameters();
-        if (parameters.length > 1) {
-            HintManager.getInstance().showErrorHint(editor, "只支持一个参数，请将参数用 POJO 包装！！！");
-            return true;
-        }
-        for (PsiParameter parameter : parameters) {
-            String jsonSchema = Utils.getPsiTypeJsonSchemaAsString(psiFile, parameter.getType(), false);
-            request.setReq_body_other(jsonSchema);
-            request.setReq_body_is_json_schema(Boolean.TRUE);
-        }
-        String returnJsonSchema = Utils.getPsiTypeJsonSchemaAsString(psiFile, psiMethod.getReturnType(), true);
-        request.setRes_body(returnJsonSchema);
-        request.setRes_body_is_json_schema(Boolean.TRUE);
-        return false;
     }
 }

@@ -1,14 +1,15 @@
 package cn.hellobike.hippo.utils;
 
 import cn.hellobike.hippo.actions.UploadToYaPi;
-import cn.hellobike.hippo.annotation.YaPiAnnotationEntity;
+import cn.hellobike.hippo.annotation.YaPiApiEntity;
+import cn.hellobike.hippo.annotation.YaPiApiEntity;
 import cn.hellobike.hippo.classloader.ReloadableClassLoader;
 import cn.hellobike.hippo.classloader.SourceFileClassLoader;
 import cn.hellobike.hippo.config.YaPiConfig;
-import cn.hellobike.hippo.json.SimpleJsonNode;
+import cn.hellobike.hippo.exception.YaPiException;
+import cn.hellobike.hippo.json.ActionContext;
 import cn.hellobike.hippo.yapi.entity.CategoryEntity;
 import cn.hellobike.hippo.yapi.request.AddInterfaceRequest;
-import cn.hellobike.hippo.yapi.request.UpdateInterfaceRequest;
 import cn.hellobike.hippo.yapi.response.GetInterfaceByIdResponse;
 import cn.hellobike.hippo.yapi.service.YaPiService;
 import cn.hutool.core.bean.BeanUtil;
@@ -16,12 +17,9 @@ import cn.hutool.core.bean.copier.CopyOptions;
 import cn.hutool.http.HttpResponse;
 import com.alibaba.fastjson.JSONObject;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.victools.jsonschema.generator.*;
 import com.intellij.codeInsight.hint.HintManager;
-import com.intellij.lang.jvm.annotation.JvmAnnotationAttribute;
 import com.intellij.notification.*;
-import com.intellij.notification.impl.NotificationGroupEP;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.diagnostic.Logger;
 import com.intellij.openapi.editor.Editor;
@@ -35,30 +33,16 @@ import com.intellij.psi.*;
 import com.intellij.psi.javadoc.PsiDocComment;
 import com.intellij.psi.util.PsiTreeUtil;
 import com.intellij.psi.util.PsiTypesUtil;
-import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.file.Paths;
-import java.util.*;
 
 public class Utils {
     public static final Logger log = Logger.getInstance(Utils.class);
 
-    public static String parseSimpleJsonNodeToString(SimpleJsonNode node) throws Exception {
-        SourceFileClassLoader fileClassLoader = new SourceFileClassLoader("com.example.demo");
-        Class<?> cls = fileClassLoader.loadClass("/Users/yuewenbo14971/frame-wp/test/target/classes/com/example/demo/bean/User.class");
-        SchemaGeneratorConfigBuilder configBuilder = new SchemaGeneratorConfigBuilder(SchemaVersion.DRAFT_2019_09, OptionPreset.PLAIN_JSON);
-        SchemaGeneratorConfig config = configBuilder.build();
-        SchemaGenerator generator = new SchemaGenerator(config);
-
-        JsonNode jsonSchema = generator.generateSchema(cls);
-        System.out.println(jsonSchema.toString());
-        return jsonSchema.toString();
-    }
 
     public static String trimSubfix(String path) {
         int i = path.lastIndexOf(".");
@@ -203,9 +187,9 @@ public class Utils {
             new NotificationGroup("My notification group",
                     NotificationDisplayType.BALLOON, true);
 
-    public static void notify(final String message) {
+    public static void notify(final String message, NotificationType type) {
         ApplicationManager.getApplication().invokeLater(() -> {
-            Notification notification = GROUP_DISPLAY_ID_INFO.createNotification(message, NotificationType.ERROR);
+            Notification notification = GROUP_DISPLAY_ID_INFO.createNotification(message, type);
             Project[] projects = ProjectManager.getInstance().getOpenProjects();
             Notifications.Bus.notify(notification, projects[0]);
         });
@@ -223,22 +207,26 @@ public class Utils {
         return null;
     }
 
-    public static String getRelativePath(String... args) {
+    public static String assemble(char c, String... args) {
         if (args == null) {
-            return "";
+            return null;
         }
         if (args.length == 1) {
-            return "/" + trim(args[0], '/');
+            return trim(args[0], c);
         }
         StringBuffer buffer = new StringBuffer();
         for (String arg : args) {
             if (arg == null) {
                 continue;
             }
-            buffer.append("/");
-            buffer.append(trim(arg, '/'));
+            buffer.append(c);
+            buffer.append(trim(arg, c));
         }
         return buffer.toString();
+    }
+
+    public static String getRelativePath(String... args) {
+        return assemble('/', args);
     }
 
     public static PsiAnnotation hasTargetAnnotation(PsiAnnotation[] annotations, String qualifyName) {
@@ -253,7 +241,7 @@ public class Utils {
         return null;
     }
 
-    public static YaPiAnnotationEntity getAnnotationEntityFromPsiAnnotation(PsiClass psiClass, PsiMethod psiMethod, PsiAnnotation psiAnnotation) {
+    public static YaPiApiEntity getAnnotationEntityFromPsiAnnotation(PsiClass psiClass, PsiMethod psiMethod, PsiAnnotation psiAnnotation) {
         if (psiAnnotation == null) {
             return null;
         }
@@ -264,7 +252,7 @@ public class Utils {
         String title = Utils.getValueFromAnnotation(psiAnnotation, "title");
         String method = Utils.getValueFromAnnotation(psiAnnotation, "method");
         String desc = Utils.getValueFromAnnotation(psiAnnotation, "desc");
-        YaPiAnnotationEntity annotationEntity = YaPiAnnotationEntity.builder()
+        YaPiApiEntity annotationEntity = YaPiApiEntity.builder()
                 .catId(catId)
                 .catText(catText)
                 .desc(desc)
@@ -273,16 +261,16 @@ public class Utils {
                 .title(title)
                 .service(service)
                 .build();
-        YaPiAnnotationEntity defaultAnnotationEntity = getDefaultAnnotationEntity(psiClass, psiMethod);
+        YaPiApiEntity defaultAnnotationEntity = getDefaultAnnotationEntity(psiClass, psiMethod);
         BeanUtil.copyProperties(annotationEntity, defaultAnnotationEntity, CopyOptions.create().ignoreNullValue().ignoreCase().ignoreError());
         return defaultAnnotationEntity;
     }
 
-    public static YaPiAnnotationEntity getDefaultAnnotationEntity(PsiClass psiClass, PsiMethod psiMethod) {
+    public static YaPiApiEntity getDefaultAnnotationEntity(PsiClass psiClass, PsiMethod psiMethod) {
         PsiAnnotation psiAnnotation = hasTargetAnnotation(psiClass.getAnnotations(), UploadToYaPi.PROJECT_TARGET_ANNOTATION);
         String value = getValueFromAnnotation(psiAnnotation, "value");
         PsiDocComment docComment = psiMethod.getDocComment();
-        YaPiAnnotationEntity entity = YaPiAnnotationEntity.builder()
+        YaPiApiEntity entity = YaPiApiEntity.builder()
                 .title(docComment == null ? "title" : docComment.toString())
                 .method("POST")
                 .desc(docComment == null ? "desc" : docComment.toString())
@@ -297,15 +285,27 @@ public class Utils {
         return entity;
     }
 
-    public static YaPiAnnotationEntity getDefaultAnnotationEntity(PsiAnnotation psiAnnotation) throws Exception {
-        YaPiAnnotationEntity entity = new YaPiAnnotationEntity();
+    public static YaPiApiEntity getDefaultAnnotationEntity(PsiAnnotation psiAnnotation) throws Exception {
+        YaPiApiEntity entity = new YaPiApiEntity();
+        if (psiAnnotation == null) {
+            return entity;
+        }
         for (PsiNameValuePair attribute : psiAnnotation.getParameterList().getAttributes()) {
-            setValueIfExist(entity, attribute.getLiteralValue(), attribute.getLiteralValue());
+            setValueIfExist(entity, attribute.getName(), attribute.getLiteralValue());
         }
         return entity;
     }
 
+    /**
+     * @param obj
+     * @param key
+     * @param value
+     * @throws Exception
+     */
     public static void setValueIfExist(Object obj, String key, Object value) throws Exception {
+        if (value == null) {
+            return;
+        }
         Method method = getSetMethod(obj.getClass(), key);
         if (method == null) {
             return;
@@ -319,7 +319,7 @@ public class Utils {
 
     public static Method getMethod(Class cls, String methodName) {
         for (Method method : cls.getMethods()) {
-            if (method.equals(methodName)) {
+            if (method.getName().equals(methodName)) {
                 return method;
             }
         }
@@ -343,7 +343,7 @@ public class Utils {
         return target.substring(left, right + 1);
     }
 
-    public static GetInterfaceByIdResponse getOrCreateInterface(YaPiAnnotationEntity annotationEntity, YaPiConfig config, YaPiService yaPiService) {
+    public static GetInterfaceByIdResponse getOrCreateInterface(YaPiApiEntity annotationEntity, YaPiConfig config, YaPiService yaPiService) throws YaPiException {
         AddInterfaceRequest addInterfaceRequest = new AddInterfaceRequest();
         BeanUtil.copyProperties(annotationEntity, addInterfaceRequest, CopyOptions.create().ignoreCase().ignoreNullValue());
         addInterfaceRequest.setProject_id(config.getProjectId());
@@ -357,4 +357,56 @@ public class Utils {
         return interfaceOrCreate;
     }
 
+    public static String getDefaultPath(ActionContext actionContext) {
+        YaPiConfig config = actionContext.getYaPiConfig();
+        PsiClass psiClass = actionContext.getPsiClass();
+        PsiJavaFile psiJavaFile = actionContext.getPsiJavaFile();
+        PsiMethod currentMethod = actionContext.getCurrentMethod();
+        return getRelativePath(config.getPathPrefix(), lastSubString(psiJavaFile.getPackageName(), '.'), currentMethod.getName());
+    }
+
+    public static String getDefaultTitle(ActionContext actionContext) {
+        YaPiConfig config = actionContext.getYaPiConfig();
+        PsiClass psiClass = actionContext.getPsiClass();
+        PsiJavaFile psiJavaFile = actionContext.getPsiJavaFile();
+        PsiMethod currentMethod = actionContext.getCurrentMethod();
+        String assemble = assemble('.', lastSubString(psiJavaFile.getPackageName(), '.'), psiClass.getName(), currentMethod.getName());
+        PsiDocComment docComment = currentMethod.getDocComment();
+        if (docComment == null) {
+            assemble += ("(" + currentMethod.getName() + ")");
+        } else {
+            assemble += ("(" + docComment.getText() + ")");
+        }
+        return assemble;
+    }
+
+    public static String lastSubString(String s, char c) {
+        int index = s.lastIndexOf(c);
+        if (index == -1) {
+            return s;
+        }
+        return s.substring(index + 1);
+    }
+
+    public static <T> T getAnnotationEntity(PsiAnnotation psiAnnotation, Class cls) throws Exception {
+        Object obj = cls.getDeclaredConstructor().newInstance();
+        if (psiAnnotation == null) {
+            return (T) obj;
+        }
+        for (PsiNameValuePair attribute : psiAnnotation.getParameterList().getAttributes()) {
+            setValueIfExist(obj, attribute.getAttributeName(), attribute.getLiteralValue());
+        }
+        return (T) obj;
+    }
+
+    public static String getSubStr(String s, char c) {
+        if (s == null) {
+            return null;
+        }
+        int c1 = s.lastIndexOf(c);
+        if (c1 == -1) {
+            return s;
+        }
+        return s.substring(0, c1);
+    }
 }

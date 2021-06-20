@@ -19,6 +19,8 @@ public class YaPiConfig implements PersistentStateComponent<YaPiConfig>, Seriali
     String token;
     String projectId;
     String url;
+    String service;
+    String pathPrefix;
 
     @Override
     public @Nullable YaPiConfig getState() {
